@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bài tập 19: Memory Card Game - Lê Trọng Hiếu</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* CSS CHUYÊN BIỆT CHO GAME GHÉP ĐÔI THẺ */
+        .game-section { max-width: 700px; margin: 20px auto; text-align: center; padding: 20px; }
+        .score-board { font-size: 1.5rem; margin-bottom: 20px; color: #2c3e50; font-weight: bold; }
+
+        /* Grid Layout: Mobile 2 cột, Desktop 4 cột */
+        .memory-game {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            perspective: 1000px; /* Quan trọng cho hiệu ứng 3D */
+        }
+        @media (min-width: 600px) {
+            .memory-game { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        /* Hiệu ứng Flip 3D Animation */
+        .memory-card {
+            height: 160px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+            border-radius: 12px;
+        }
+        .memory-card.flip { transform: rotateY(180deg); }
+
+        .front-face, .back-face {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            border-radius: 12px;
+            backface-visibility: hidden; /* Giấu mặt sau khi lật */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .front-face { background: #fff; transform: rotateY(180deg); }
+        .back-face { 
+            background: linear-gradient(135deg, #3498db, #2c3e50); 
+            color: white; 
+            font-size: 2rem; 
+        }
+        .back-face:hover { opacity: 0.9; }
+
+        .controls { margin-top: 30px; }
+        .btn-reset { 
+            background: #27ae60; color: white; border: none; 
+            padding: 12px 30px; border-radius: 50px; font-weight: bold; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <nav class="main-menu">
+        <ul>
+            <li><a href="index.html">🏠 Trang chủ</a></li>
+            <li><a href="baitap19.html" class="active">🎮 Bài tập 19</a></li>
+            <li><a href="about.html">📍 Điểm danh</a></li>
+        </ul>
+    </nav>
+
+    <div class="game-section">
+        <h1>TRÒ CHƠI GHÉP ĐÔI THẺ</h1>
+        <div class="score-board">Số lượt click: <span id="move-count">0</span></div>
+        
+        <div class="memory-game" id="game-board">
+            </div>
+
+        <div class="controls">
+            <button class="btn-reset" onclick="startGame()">Làm mới trò chơi</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 8 thẻ (4 cặp icon)
+    const cardIcons = ['🚀', '🚀', '🌈', '🌈', '💎', '💎', '⚡', '⚡'];
+    let hasFlippedCard = false;
+    let lockBoard = false;
+    let firstCard, secondCard;
+    let moves = 0;
+
+    // Hàm khởi tạo và Shuffle (Trộn thẻ)
+    function startGame() {
+        moves = 0;
+        document.getElementById('move-count').innerText = moves;
+        const board = document.getElementById('game-board');
+        board.innerHTML = '';
+        
+        // Thuật toán xáo trộn mảng
+        const shuffled = cardIcons.sort(() => Math.random() - 0.5);
+
+        shuffled.forEach(icon => {
+            const card = document.createElement('div');
+            card.classList.add('memory-card');
+            card.dataset.icon = icon;
+            card.innerHTML = `
+                <div class="front-face">${icon}</div>
+                <div class="back-face">?</div>
+            `;
+            card.addEventListener('click', flipCard);
+            board.appendChild(card);
+        });
+    }
+
+    function flipCard() {
+        if (lockBoard) return; // Khóa board khi đang so sánh
+        if (this === firstCard) return; // Không cho click 2 lần 1 thẻ
+
+        this.classList.add('flip');
+
+        if (!hasFlippedCard) {
+            hasFlippedCard = true;
+            firstCard = this;
+            return;
+        }
+
+        secondCard = this;
+        moves++;
+        document.getElementById('move-count').innerText = moves;
+        checkMatch();
+    }
+
+    function checkMatch() {
+        let isMatch = firstCard.dataset.icon === secondCard.dataset.icon;
+        isMatch ? disableCards() : unflipCards();
+    }
+
+    function disableCards() {
+        // Nếu khớp: Giữ nguyên và gỡ bỏ sự kiện click
+        firstCard.removeEventListener('click', flipCard);
+        secondCard.removeEventListener('click', flipCard);
+        resetBoard();
+        
+        // Kiểm tra xem đã thắng chưa (tất cả thẻ đã lật)
+        const flippedCards = document.querySelectorAll('.flip').length;
+        if (flippedCards === cardIcons.length) {
+            setTimeout(() => alert(`Chúc mừng Hiếu! Bạn hoàn thành sau ${moves} lượt!`), 500);
+        }
+    }
+
+    function unflipCards() {
+        lockBoard = true;
+        // Nếu không khớp: Đợi 1s rồi lật lại
+        setTimeout(() => {
+            firstCard.classList.remove('flip');
+            secondCard.classList.remove('flip');
+            resetBoard();
+        }, 1000);
+    }
+
+    function resetBoard() {
+        [hasFlippedCard, lockBoard] = [false, false];
+        [firstCard, secondCard] = [null, null];
+    }
+
+    // Chạy game khi load trang
+    startGame();
+</script>
+
+</body>
+</html>
